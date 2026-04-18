@@ -8,11 +8,16 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+# استدعاء مكتبة الذكاء الاصطناعي
 try:
     import google.generativeai as genai
 except ImportError:
     genai = None
 
+# إعداد مفتاح الـ API الخاص بك هنا (مخفي عن الزوار)
+GEMINI_API_KEY = "AIzaSyCtUM4x2UuTSQHkRid-PvA-NXuSnNhMkmU"
+if genai:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 st.set_page_config(
     page_title="Hotel BI Platform with AI",
@@ -34,6 +39,9 @@ st.markdown(
         .kpi-value { color: #f2f5ff; font-size: 1.65rem; font-weight: 700; line-height: 1.1; }
         .kpi-help { color: #93a0bd; font-size: 0.76rem; margin-top: 0.3rem; }
         .section-title { font-size: 1.04rem; font-weight: 650; color: #e8ecf7; }
+        /* ستايل زر الـ AI ليكون واضح ومميز */
+        .stButton>button[kind="primary"] { background-color: #ff4b4b; color: white; border: none; font-weight: bold; border-radius: 8px;}
+        .stButton>button[kind="primary"]:hover { background-color: #ff3333; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -181,105 +189,6 @@ def get_dataset_kpis(df: pd.DataFrame, detected: dict[str, str | None]) -> dict[
     }
 
 
-def build_gemini_prompt(df: pd.DataFrame, detected: dict[str, str | None]) -> str:
-    numeric = infer_numeric_columns(df)
-    city = detected["city_col"]
-    price = detected["price_col"]
-    grouped = []
-    if city and price and city in df.columns and price in df.columns:
-        grouped = (
-            df.groupby(city)[price].mean().sort_values(ascending=False).head(12).reset_index().to_dict(orient="records")
-        )
-
-    payload = {
-        "shape": {"rows": int(df.shape[0]), "columns": int(df.shape[1])},
-        "columns": list(df.columns),
-        "dtypes": {k: str(v) for k, v in df.dtypes.to_dict().items()},
-        "summary_stats": df[numeric].describe().round(3).to_dict() if numeric else {},
-        "missing_values": {k: int(v) for k, v in df.isna().sum().to_dict().items()},
-        "detected_columns": detected,
-        "grouped_preview": grouped,
-        "sample_rows": df.head(12).to_dict(orient="records"),
-    }
-    return (
-        "You are a senior data scientist and BI strategist. "
-        "Analyze this dataset and output exactly these 4 sections:\n\n"
-        "1) Key insights\n"
-        "2) Trends\n"
-        "3) Anomalies\n"
-        "4) Business recommendations\n\n"
-        "Rules: keep it concise, data-grounded, and actionable. Max 5 bullets per section.\n\n"
-        f"DATA_JSON:\n{json.dumps(payload, ensure_ascii=False)}"
-    )
-
-
-def get_gemini_response(prompt: str, api_key: str, model_name: str = "gemini-1.5-flash") -> tuple[bool, str]:
-    if not api_key:
-        return False, "Gemini API key is required. Add it in the AI Insights tab."
-    if genai is None:
-        return False, "Package missing: install with `pip install google-generativeai`."
-
-    try:
-        genai.configure(api_key=api_key)
-        fallback_models = [
-            model_name,
-            "gemini-1.5-pro",
-            "gemini-2.0-flash",
-            "gemini-2.0-flash-exp",
-            "gemini-1.0-pro",
-        ]
-        errors: list[str] = []
-
-        for candidate_model in list(dict.fromkeys(fallback_models)):
-            try:
-                model = genai.GenerativeModel(candidate_model)
-                response = model.generate_content(prompt)
-                text = getattr(response, "text", "")
-                if not text and getattr(response, "candidates", None):
-                    parts = response.candidates[0].content.parts
-                    text = "".join(getattr(part, "text", "") for part in parts)
-                if text:
-                    return True, text.strip()
-                errors.append(f"{candidate_model}: empty response")
-            except Exception as model_exc:
-                errors.append(f"{candidate_model}: {model_exc}")
-
-        return False, "All candidate Gemini models failed:\n- " + "\n- ".join(errors)
-    except Exception as exc:
-        return False, f"Gemini request failed: {exc}"
-
-
-def list_generate_models(api_key: str) -> list[str]:
-    if not api_key or genai is None:
-        return []
-    try:
-        genai.configure(api_key=api_key)
-        models: list[str] = []
-        for model in genai.list_models():
-            supported = getattr(model, "supported_generation_methods", []) or []
-            if "generateContent" in supported:
-                name = getattr(model, "name", "")
-                if name:
-                    models.append(name.replace("models/", ""))
-        return sorted(set(models))
-    except Exception:
-        return []
-
-
-def resolve_api_key() -> str:
-    """Resolve API key from session, Streamlit secrets, or environment."""
-    if st.session_state.get("gemini_key"):
-        return st.session_state["gemini_key"].strip()
-    try:
-        secret_key = st.secrets.get("GEMINI_API_KEY", "")
-        if secret_key:
-            return str(secret_key).strip()
-    except Exception:
-        pass
-    env_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
-    return env_key.strip()
-
-
 def power_bi_suggestions(df: pd.DataFrame, detected: dict[str, str | None]) -> dict[str, Any]:
     numeric = infer_numeric_columns(df)
     categorical = infer_categorical_columns(df)
@@ -374,13 +283,11 @@ def init_state() -> None:
         st.session_state.selected_dataset = None
     if "cleaning_reports" not in st.session_state:
         st.session_state.cleaning_reports = {}
-    if "gemini_key" not in st.session_state:
-        st.session_state.gemini_key = ""
 
 
 init_state()
 
-st.title("📊 AI Intelligence Dataset ")
+st.title("📊 AI Intelligence Dataset")
 st.caption("Upload, clean, compare, visualize, and generate AI insights from multiple datasets.")
 
 with st.sidebar:
@@ -404,8 +311,6 @@ with st.sidebar:
                 st.session_state.cleaning_reports[file.name] = report
             except Exception as exc:
                 st.error(f"{file.name}: {exc}")
-
-                
 
     names = list(st.session_state.datasets.keys())
     if names:
@@ -602,42 +507,53 @@ with tabs[2]:
         else:
             st.warning("No common numeric columns found between selected datasets.")
 
+# ---------------------------------------------------------
+# الجزء المعدل بالكامل: تبويب الذكاء الاصطناعي (AI Insights)
+# ---------------------------------------------------------
 with tabs[3]:
     st.markdown('<div class="section-title">🤖 AI Insights (Gemini)</div>', unsafe_allow_html=True)
-    st.write(f"Analyze dataset: `{active_name}`")
-    st.session_state.gemini_key = st.text_input(
-        "Gemini API Key",
-        value=st.session_state.gemini_key,
-        type="password",
-        help="Kept only in session memory. You can also set GOOGLE_API_KEY in environment.",
-        key="gemini_key_ai_tab",
+    st.write(f"**Analyze dataset:** `{active_name}`")
+    
+    # مربع النص البسيط للزائر ليسأل أي سؤال بحرية
+    user_question = st.text_area(
+        "What would you like to know about this dataset?",
+        placeholder="Example: What are the key trends? Can you summarize the main metrics?",
+        height=100
     )
-    active_api_key = resolve_api_key()
-    available_models = list_generate_models(active_api_key)
-    default_models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.0-pro"]
-    model_options = available_models if available_models else default_models
-    model_name = st.selectbox("Gemini model", options=model_options, index=0)
-    if available_models:
-        st.caption(f"Detected {len(available_models)} models with generateContent support.")
-    else:
-        st.caption("Could not fetch models list. Using safe fallback models.")
-    c_test, c_gen = st.columns(2)
-    if c_test.button("Test Gemini Connection", use_container_width=True):
-        with st.spinner("Testing Gemini API connection..."):
-            ok, result = get_gemini_response("Reply with: Gemini connection successful.", api_key=active_api_key, model_name=model_name)
-        if ok:
-            st.success("Gemini connected successfully.")
+    
+    # زر التحليل الواضح
+    if st.button("Generate AI Insights", type="primary", use_container_width=True):
+        if not user_question.strip():
+            st.warning("Please type a question or prompt first.")
         else:
-            st.error(result)
-    if c_gen.button("Generate AI Insights", type="primary", use_container_width=True):
-        with st.spinner("Generating AI insights..."):
-            prompt = build_gemini_prompt(active_df, detected)
-            ok, result = get_gemini_response(prompt, api_key=active_api_key, model_name=model_name)
-        if ok:
-            st.success("AI insights generated successfully.")
-            st.markdown(result)
-        else:
-            st.error(result)
+            if genai is None:
+                st.error("❌ The google-generativeai package is not installed. Please install it.")
+            else:
+                with st.spinner("Analyzing data with AI... Please wait."):
+                    try:
+                        # أخذ عينة من البيانات لفهم السياق
+                        data_sample = active_df.head(15).to_string()
+                        
+                        # تجهيز السؤال الذي سيذهب للذكاء الاصطناعي
+                        prompt = f"""
+                        You are an expert Data Analyst. Analyze the following dataset sample and answer the user's question clearly.
+                        
+                        Dataset Sample:
+                        {data_sample}
+                        
+                        User Question: {user_question}
+                        """
+                        
+                        # استخدام موديل الفلاش السريع والمستقر بشكل مباشر
+                        model = genai.GenerativeModel('gemini-1.5-flash')
+                        response = model.generate_content(prompt)
+                        
+                        st.success("✅ Analysis Complete!")
+                        st.markdown("### 💡 AI Response:")
+                        st.info(response.text)
+                    
+                    except Exception as e:
+                        st.error(f"❌ Error connecting to AI: {e}")
 
 with tabs[4]:
     st.markdown('<div class="section-title">📊 Suggested Power BI Dashboard</div>', unsafe_allow_html=True)
@@ -659,4 +575,3 @@ with tabs[4]:
         st.markdown("#### Dataset Notes")
         for note in suggestion["notes"]:
             st.markdown(f"- {note}")
-
