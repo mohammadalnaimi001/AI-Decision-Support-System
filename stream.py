@@ -4,7 +4,7 @@ import os
 from typing import Any
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-
+from sklearn.linear_model import LinearRegression
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -16,8 +16,8 @@ except ImportError:
     genai = None
 
 # ─── HARDCODED API KEY ───────────────────────────────────────────────────────
-GEMINI_API_KEY = "AIzaSyBU7lYSRmt3_qECFpfqpYoXPuN0I0DMZnI"
-GEMINI_MODEL   = "gemini-2.5-flash"
+GEMINI_API_KEY = "AIzaSyCtUM4x2UuTSQHkRid-PvA-NXuSnNhMkmU"
+GEMINI_MODEL   = "gemini-2.0-flash"
 # ─────────────────────────────────────────────────────────────────────────────
 
 st.set_page_config(
@@ -451,12 +451,60 @@ with tabs[0]:
     except Exception as err:
         st.error(f"Could not render chart: {err}")
 
+st.markdown("## 🔮 Prediction Using Linear Regression")
+
+numeric_cols = infer_numeric_columns(filtered_df)
+
+if len(numeric_cols) >= 2:
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        x_col = st.selectbox("Select Feature (X)", numeric_cols)
+
+    with col2:
+        y_col = st.selectbox("Select Target (Y)", numeric_cols)
+
+    if st.button("Run Prediction"):
+
+        try:
+            df_model = filtered_df[[x_col, y_col]].dropna()
+
+            X = df_model[[x_col]].values
+            y = df_model[y_col].values
+
+            model = LinearRegression()
+            model.fit(X, y)
+
+            y_pred = model.predict(X)
+
+            st.success("✅ Model Trained Successfully")
+
+            # رسم النتيجة
+            fig_pred = px.scatter(df_model, x=x_col, y=y_col, title="Prediction vs Actual")
+            fig_pred.add_scatter(x=df_model[x_col], y=y_pred, mode='lines', name='Prediction')
+
+            st.plotly_chart(fig_pred, use_container_width=True)
+
+            # تجربة قيمة جديدة
+            new_val = st.number_input(f"Enter new {x_col} value")
+
+            if st.button("Predict Result"):
+                pred = model.predict([[new_val]])
+                st.success(f"Predicted {y_col}: {pred[0]:.2f}")
+
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+else:
+    st.warning("Not enough numeric columns for prediction.")
+
 # ══════════════════════════════ TAB 1 – DATA CLEANING ═════════════════════════
 with tabs[1]:
     st.markdown('<div class="section-title">🧹 Data Cleaning</div>', unsafe_allow_html=True)
     st.write(f"Cleaning dataset: `{active_name}`")
 
-    before = get_stats(active_entry["cleaned"])
+    before = get_stats(active_entry["raw"])
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Rows", before["rows"])
     c2.metric("Columns", before["cols"])
@@ -465,7 +513,7 @@ with tabs[1]:
 
     btn1, btn2, btn3 = st.columns(3)
     if btn1.button("Clean Data", use_container_width=True):
-        cleaned, report = auto_clean_data(active_entry["cleaned"])
+        cleaned, report = auto_clean_data(active_entry["raw"])
         st.session_state.datasets[active_name]["cleaned"] = cleaned
         st.session_state.datasets[active_name]["detected"] = detect_business_columns(cleaned)
         st.session_state.cleaning_reports[active_name] = report
@@ -473,7 +521,7 @@ with tabs[1]:
         st.rerun()
 
     if btn2.button("Remove Missing Values", use_container_width=True):
-        cleaned = remove_missing_rows(active_entry["cleaned"])
+        cleaned = remove_missing_rows(active_entry["raw"])
         st.session_state.datasets[active_name]["cleaned"] = cleaned
         st.session_state.datasets[active_name]["detected"] = detect_business_columns(cleaned)
         st.success("Rows with missing values removed.")
