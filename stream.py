@@ -16,7 +16,7 @@ except ImportError:
 
 st.set_page_config(
     page_title="Hotel BI Platform with AI",
-    page_icon="🏨",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -380,7 +380,7 @@ def init_state() -> None:
 
 init_state()
 
-st.title("🏨 Multi-Dataset Hotel BI Platform")
+st.title("📊 AI Intelligence Dataset ")
 st.caption("Upload, clean, compare, visualize, and generate AI insights from multiple datasets.")
 
 with st.sidebar:
@@ -404,6 +404,8 @@ with st.sidebar:
                 st.session_state.cleaning_reports[file.name] = report
             except Exception as exc:
                 st.error(f"{file.name}: {exc}")
+
+                
 
     names = list(st.session_state.datasets.keys())
     if names:
@@ -657,3 +659,4 @@ with tabs[4]:
         st.markdown("#### Dataset Notes")
         for note in suggestion["notes"]:
             st.markdown(f"- {note}")
+
