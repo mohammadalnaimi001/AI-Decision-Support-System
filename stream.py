@@ -4,7 +4,7 @@ import os
 from typing import Any
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import linearRegression
 import numpy as np
 import pandas as pd
 import plotly.express as px
