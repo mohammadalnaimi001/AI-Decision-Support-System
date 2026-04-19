@@ -4,7 +4,7 @@ import os
 from typing import Any
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-from sklearn.linear_model import linearRegression
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -451,53 +451,7 @@ with tabs[0]:
     except Exception as err:
         st.error(f"Could not render chart: {err}")
 
-st.markdown("## 🔮 Prediction Using Linear Regression")
 
-numeric_cols = infer_numeric_columns(filtered_df)
-
-if len(numeric_cols) >= 2:
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        x_col = st.selectbox("Select Feature (X)", numeric_cols)
-
-    with col2:
-        y_col = st.selectbox("Select Target (Y)", numeric_cols)
-
-    if st.button("Run Prediction"):
-
-        try:
-            df_model = filtered_df[[x_col, y_col]].dropna()
-
-            X = df_model[[x_col]].values
-            y = df_model[y_col].values
-
-            model = LinearRegression()
-            model.fit(X, y)
-
-            y_pred = model.predict(X)
-
-            st.success("✅ Model Trained Successfully")
-
-            # رسم النتيجة
-            fig_pred = px.scatter(df_model, x=x_col, y=y_col, title="Prediction vs Actual")
-            fig_pred.add_scatter(x=df_model[x_col], y=y_pred, mode='lines', name='Prediction')
-
-            st.plotly_chart(fig_pred, use_container_width=True)
-
-            # تجربة قيمة جديدة
-            new_val = st.number_input(f"Enter new {x_col} value")
-
-            if st.button("Predict Result"):
-                pred = model.predict([[new_val]])
-                st.success(f"Predicted {y_col}: {pred[0]:.2f}")
-
-        except Exception as e:
-            st.error(f"Error: {e}")
-
-else:
-    st.warning("Not enough numeric columns for prediction.")
 
 # ══════════════════════════════ TAB 1 – DATA CLEANING ═════════════════════════
 with tabs[1]:
