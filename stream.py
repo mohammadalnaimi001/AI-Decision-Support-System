@@ -408,7 +408,7 @@ if genai is not None:
         st.error(f"Gemini config error: {_cfg_err}")
 # ─────────────────────────────────────────────────────────────────────────────
 
-st.title("📊 AI Intelligence Dataset")
+st.title("📊 Smart Hotel Analytics Platform")
 st.caption("Upload, clean, compare, visualize, and generate AI insights from multiple datasets.")
 
 with st.sidebar:
