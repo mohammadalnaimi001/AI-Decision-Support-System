@@ -23,7 +23,7 @@ GEMINI_MODEL   = "gemini-2.5-flash"
 # ─────────────────────────────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="AI Intelligence Dataset",
+    page_title="Smart Hotel Analytics Platform",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
