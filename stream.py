@@ -18,8 +18,8 @@ except ImportError:
     genai = None
 
 # ─── HARDCODED API KEY ───────────────────────────────────────────────────────
-GEMINI_API_KEY = "AIzaSyAUPCeAD2VipoFJR9bP5BjwF1rfrTnCexs"
-GEMINI_MODEL   = "gemini-2.0-flash"
+GEMINI_API_KEY = "AQ.Ab8RN6KAVRoZH5vAN7W500F5OLBghMOn29RYdpDhXaagMWW2gg"
+GEMINI_MODEL   = "gemini-2.5-flash"
 # ─────────────────────────────────────────────────────────────────────────────
 
 st.set_page_config(
