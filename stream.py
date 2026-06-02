@@ -17,10 +17,9 @@ try:
 except ImportError:
     genai = None
 
-# ─── HARDCODED API KEY ───────────────────────────────────────────────────────
+
 GEMINI_API_KEY = "AQ.Ab8RN6KAVRoZH5vAN7W500F5OLBghMOn29RYdpDhXaagMWW2gg"
 GEMINI_MODEL   = "gemini-2.5-flash"
-# ─────────────────────────────────────────────────────────────────────────────
 
 st.set_page_config(
     page_title="Smart Hotel Analytics Platform",
@@ -406,7 +405,6 @@ if genai is not None:
         _gemini_model = genai.GenerativeModel(GEMINI_MODEL)
     except Exception as _cfg_err:
         st.error(f"Gemini config error: {_cfg_err}")
-# ─────────────────────────────────────────────────────────────────────────────
 
 st.title("📊 Smart Hotel Analytics Platform")
 st.caption("Upload, clean, compare, visualize, and generate AI insights from multiple datasets.")
@@ -460,7 +458,6 @@ numeric_cols = infer_numeric_columns(active_df)
 
 tabs = st.tabs(["Overview", "Data Cleaning", "Comparison", "AI Insights", "Power BI Suggestions", "Power BI Dashboard"])
 
-# ══════════════════════════════ TAB 0 – OVERVIEW ══════════════════════════════
 with tabs[0]:
     st.markdown('<div class="section-title">📊 Overview Dashboard</div>', unsafe_allow_html=True)
     st.write(f"Active dataset: `{active_name}`")
@@ -552,7 +549,6 @@ with tabs[0]:
         st.error(f"Could not render chart: {err}")
 
 
-# ══════════════════════════════ TAB 1 – DATA CLEANING ═════════════════════════
 with tabs[1]:
     st.markdown('<div class="section-title">🧹 Data Cleaning</div>', unsafe_allow_html=True)
     st.write(f"Cleaning dataset: `{active_name}`")
@@ -604,7 +600,6 @@ with tabs[1]:
     )
     st.caption("Exported file is ready for Power BI ingestion.")
 
-# ══════════════════════════════ TAB 2 – COMPARISON ════════════════════════════
 with tabs[2]:
     st.markdown('<div class="section-title">⚖️ Dataset Comparison Dashboard</div>', unsafe_allow_html=True)
     if len(selected_for_compare) < 2:
@@ -654,7 +649,6 @@ with tabs[2]:
         else:
             st.warning("No common numeric columns found between selected datasets.")
 
-# ══════════════════════════════ TAB 3 – AI INSIGHTS ══════════════════════════
 with tabs[3]:
     st.markdown('<div class="section-title">🤖 AI Insights (Gemini)</div>', unsafe_allow_html=True)
     st.write(f"**Analyze dataset:** `{active_name}`")
@@ -767,7 +761,6 @@ Answer clearly with insights.
             except Exception as e:
                 st.error(f"PDF Error: {e}")
 
-# ══════════════════════════════ TAB 4 – POWER BI SUGGESTIONS ═════════════════
 with tabs[4]:
     st.markdown('<div class="section-title">📊 Suggested Power BI Dashboard</div>', unsafe_allow_html=True)
     suggestion = power_bi_suggestions(active_df, detected)
@@ -789,7 +782,6 @@ with tabs[4]:
         for note in suggestion["notes"]:
             st.markdown(f"- {note}")
 
-    # ── Auto Generated Dashboard (kept only in Tab 4) ─────────────────────
     st.markdown("---")
     st.subheader("📊 Auto Generated Dashboard")
 
@@ -845,10 +837,8 @@ with tabs[4]:
         st.plotly_chart(fig_pie, use_container_width=True)
 
 
-# ══════════════════════════════ TAB 5 – POWER BI DASHBOARD TEMPLATE ══════════
 with tabs[5]:
 
-    # ── Header ───────────────────────────────────────────────────────────────
     st.markdown(
         f"""
         <div class="pbi-header">
@@ -871,7 +861,6 @@ with tabs[5]:
     PBI_COLOR    = "#F2C811"
     PBI_PALETTE  = ["#F2C811", "#00B0F0", "#00CC6A", "#FF4444", "#A259FF", "#FF8C00"]
 
-    # ── Sidebar Filters ───────────────────────────────────────────────────────
     st.markdown('<div class="pbi-section-title">🔍 Filters</div>', unsafe_allow_html=True)
     pbi_df = active_df.copy()
 
@@ -907,7 +896,6 @@ with tabs[5]:
 
     st.markdown("---")
 
-    # ── KPI Row ───────────────────────────────────────────────────────────────
     st.markdown('<div class="pbi-section-title">📌 Key Performance Indicators</div>', unsafe_allow_html=True)
 
     kpi_cols = st.columns(5)
@@ -932,7 +920,6 @@ with tabs[5]:
         unique_c = pbi_df[city_col].nunique()
         kpi_data.append(("📍 Cities / Regions", f"{unique_c:,}", "in current filter"))
 
-    # fill up to 5 KPIs with extra numeric stats
     for col in num_cols:
         if col in [price_col, rating_col]:
             continue
@@ -946,7 +933,6 @@ with tabs[5]:
 
     st.markdown("---")
 
-    # ── Row 1: Bar + Line ─────────────────────────────────────────────────────
     st.markdown('<div class="pbi-section-title">📊 Performance by Category & Time Trend</div>', unsafe_allow_html=True)
     row1_c1, row1_c2 = st.columns(2)
 
@@ -1022,7 +1008,6 @@ with tabs[5]:
             else:
                 st.info("No date column detected for trend chart.")
 
-    # ── Row 2: Scatter + Donut ────────────────────────────────────────────────
     st.markdown('<div class="pbi-section-title">🔗 Correlation & Distribution</div>', unsafe_allow_html=True)
     row2_c1, row2_c2 = st.columns(2)
 
@@ -1076,7 +1061,6 @@ with tabs[5]:
         else:
             st.info("No categorical column for donut chart.")
 
-    # ── Row 3: Box Plot + Heatmap ─────────────────────────────────────────────
     st.markdown('<div class="pbi-section-title">📦 Statistical Distribution & Correlations</div>', unsafe_allow_html=True)
     row3_c1, row3_c2 = st.columns(2)
 
@@ -1123,7 +1107,6 @@ with tabs[5]:
         else:
             st.info("Need at least 2 numeric columns for correlation heatmap.")
 
-    # ── Row 4: Histogram + Top 10 Table ───────────────────────────────────────
     st.markdown('<div class="pbi-section-title">📈 Price Distribution & Top Performers</div>', unsafe_allow_html=True)
     row4_c1, row4_c2 = st.columns([1.2, 0.8])
 
@@ -1165,7 +1148,6 @@ with tabs[5]:
         else:
             st.info("Need categorical + numeric column for top 10 table.")
 
-    # ── AI Insights Strip ──────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown('<div class="pbi-section-title">🤖 AI-Generated Insights</div>', unsafe_allow_html=True)
 
@@ -1191,7 +1173,6 @@ Dataset:
     pbi_cached = st.session_state.get(pbi_insights_key, "__UNAVAILABLE__")
 
     if pbi_cached.startswith("__ERROR__:") or pbi_cached == "__UNAVAILABLE__":
-        # fallback static insights based on data
         insight_lines = []
         if price_col and price_col in active_df.columns:
             insight_lines.append(f"💡 The average {price_col} across all records is **{active_df[price_col].mean():,.2f}**, with a range from {active_df[price_col].min():,.2f} to {active_df[price_col].max():,.2f}.")
@@ -1228,7 +1209,6 @@ Dataset:
             del st.session_state[pbi_insights_key]
         st.rerun()
 
-    # ── Footer ────────────────────────────────────────────────────────────────
     st.markdown(
         f"""
         <div class="pbi-footer">
