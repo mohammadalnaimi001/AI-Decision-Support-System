@@ -17,12 +17,13 @@ try:
 except ImportError:
     genai = None
 
-
+# ─── HARDCODED API KEY ───────────────────────────────────────────────────────
 GEMINI_API_KEY = "AQ.Ab8RN6KAVRoZH5vAN7W500F5OLBghMOn29RYdpDhXaagMWW2gg"
-GEMINI_MODEL   = "gemini-2.5-flash"
+GEMINI_MODEL   = "gemini-2.0-flash"
+# ─────────────────────────────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="Smart Hotel Analytics Platform",
+    page_title="AI Intelligence Dataset",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -405,8 +406,9 @@ if genai is not None:
         _gemini_model = genai.GenerativeModel(GEMINI_MODEL)
     except Exception as _cfg_err:
         st.error(f"Gemini config error: {_cfg_err}")
+# ─────────────────────────────────────────────────────────────────────────────
 
-st.title("📊 Smart Hotel Analytics Platform")
+st.title("📊 AI Intelligence Dataset")
 st.caption("Upload, clean, compare, visualize, and generate AI insights from multiple datasets.")
 
 with st.sidebar:
@@ -458,6 +460,7 @@ numeric_cols = infer_numeric_columns(active_df)
 
 tabs = st.tabs(["Overview", "Data Cleaning", "Comparison", "AI Insights", "Power BI Suggestions", "Power BI Dashboard"])
 
+# ══════════════════════════════ TAB 0 – OVERVIEW ══════════════════════════════
 with tabs[0]:
     st.markdown('<div class="section-title">📊 Overview Dashboard</div>', unsafe_allow_html=True)
     st.write(f"Active dataset: `{active_name}`")
@@ -514,6 +517,49 @@ with tabs[0]:
         fig_corr = px.imshow(corr, text_auto=True, title="Correlation Heatmap", template="plotly_dark", color_continuous_scale="RdBu")
         st.plotly_chart(fig_corr, use_container_width=True)
 
+    # ── Linear Regression ──────────────────────────────────────────────────────
+    st.markdown('<div class="section-title">📉 Linear Regression</div>', unsafe_allow_html=True)
+    if len(numeric_cols) >= 2:
+        lr_c1, lr_c2 = st.columns(2)
+        with lr_c1:
+            lr_x = st.selectbox("X — Independent Variable", options=numeric_cols, key="lr_x")
+        with lr_c2:
+            lr_y_opts = [c for c in numeric_cols if c != lr_x]
+            lr_y = st.selectbox("Y — Dependent Variable", options=lr_y_opts, key="lr_y")
+
+        lr_data = filtered_df[[lr_x, lr_y]].dropna()
+        if len(lr_data) >= 2:
+            x_vals = lr_data[lr_x].values.astype(float)
+            y_vals = lr_data[lr_y].values.astype(float)
+
+            coeffs = np.polyfit(x_vals, y_vals, 1)
+            slope, intercept = coeffs
+            y_pred = np.polyval(coeffs, x_vals)
+            ss_res = np.sum((y_vals - y_pred) ** 2)
+            ss_tot = np.sum((y_vals - np.mean(y_vals)) ** 2)
+            r_squared = 1.0 - ss_res / ss_tot if ss_tot != 0 else 0.0
+
+            rm1, rm2, rm3 = st.columns(3)
+            rm1.metric("R² Score", f"{r_squared:.4f}")
+            rm2.metric("Slope", f"{slope:.4f}")
+            rm3.metric("Intercept", f"{intercept:.4f}")
+            st.caption(f"Equation: **{lr_y} = {slope:.4f} × {lr_x} + ({intercept:.4f})**")
+
+            x_line = np.linspace(x_vals.min(), x_vals.max(), 300)
+            y_line = slope * x_line + intercept
+            fig_lr = px.scatter(lr_data, x=lr_x, y=lr_y, template="plotly_dark",
+                                title=f"Linear Regression: {lr_x} → {lr_y}", opacity=0.55)
+            fig_lr.add_trace(go.Scatter(
+                x=x_line, y=y_line, mode="lines",
+                name=f"Fit (R²={r_squared:.3f})",
+                line=dict(color="#F2C811", width=2.5),
+            ))
+            st.plotly_chart(fig_lr, use_container_width=True)
+        else:
+            st.warning("Not enough data points for regression after removing nulls.")
+    else:
+        st.info("Need at least 2 numeric columns for linear regression.")
+
     if date_col and date_col in filtered_df.columns and price_col and price_col in filtered_df.columns:
         ts_df = filtered_df.copy()
         ts_df[date_col] = pd.to_datetime(ts_df[date_col], errors="coerce")
@@ -549,6 +595,7 @@ with tabs[0]:
         st.error(f"Could not render chart: {err}")
 
 
+# ══════════════════════════════ TAB 1 – DATA CLEANING ═════════════════════════
 with tabs[1]:
     st.markdown('<div class="section-title">🧹 Data Cleaning</div>', unsafe_allow_html=True)
     st.write(f"Cleaning dataset: `{active_name}`")
@@ -586,10 +633,21 @@ with tabs[1]:
 
     after_df = st.session_state.datasets[active_name]["cleaned"]
     after = get_stats(after_df)
+
+    st.markdown("#### After Cleaning")
+    rows_removed = before["rows"] - after["rows"]
+    missing_removed = before["missing"] - after["missing"]
+    dups_removed = before["duplicates"] - after["duplicates"]
+
+    if rows_removed > 0:
+        st.success(f"✅ **{after['rows']:,} rows remaining** — {rows_removed:,} rows removed during cleaning.")
+    elif rows_removed == 0:
+        st.info(f"ℹ️ **{after['rows']:,} rows remaining** — no rows were removed (missing values were filled).")
+
     a1, a2, a3, a4 = st.columns(4)
-    a1.metric("Rows After", after["rows"], delta=after["rows"] - before["rows"])
-    a2.metric("Missing After", after["missing"], delta=after["missing"] - before["missing"])
-    a3.metric("Duplicates After", after["duplicates"], delta=after["duplicates"] - before["duplicates"])
+    a1.metric("Rows After", f"{after['rows']:,}", delta=f"-{rows_removed:,} rows" if rows_removed > 0 else "No change", delta_color="off")
+    a2.metric("Missing After", after["missing"], delta=-missing_removed, delta_color="inverse")
+    a3.metric("Duplicates After", after["duplicates"], delta=-dups_removed, delta_color="inverse")
     a4.metric("Columns After", after["cols"])
 
     st.download_button(
@@ -600,6 +658,7 @@ with tabs[1]:
     )
     st.caption("Exported file is ready for Power BI ingestion.")
 
+# ══════════════════════════════ TAB 2 – COMPARISON ════════════════════════════
 with tabs[2]:
     st.markdown('<div class="section-title">⚖️ Dataset Comparison Dashboard</div>', unsafe_allow_html=True)
     if len(selected_for_compare) < 2:
@@ -649,6 +708,7 @@ with tabs[2]:
         else:
             st.warning("No common numeric columns found between selected datasets.")
 
+# ══════════════════════════════ TAB 3 – AI INSIGHTS ══════════════════════════
 with tabs[3]:
     st.markdown('<div class="section-title">🤖 AI Insights (Gemini)</div>', unsafe_allow_html=True)
     st.write(f"**Analyze dataset:** `{active_name}`")
@@ -761,6 +821,7 @@ Answer clearly with insights.
             except Exception as e:
                 st.error(f"PDF Error: {e}")
 
+# ══════════════════════════════ TAB 4 – POWER BI SUGGESTIONS ═════════════════
 with tabs[4]:
     st.markdown('<div class="section-title">📊 Suggested Power BI Dashboard</div>', unsafe_allow_html=True)
     suggestion = power_bi_suggestions(active_df, detected)
@@ -782,6 +843,7 @@ with tabs[4]:
         for note in suggestion["notes"]:
             st.markdown(f"- {note}")
 
+    # ── Auto Generated Dashboard (kept only in Tab 4) ─────────────────────
     st.markdown("---")
     st.subheader("📊 Auto Generated Dashboard")
 
@@ -837,8 +899,10 @@ with tabs[4]:
         st.plotly_chart(fig_pie, use_container_width=True)
 
 
+# ══════════════════════════════ TAB 5 – POWER BI DASHBOARD TEMPLATE ══════════
 with tabs[5]:
 
+    # ── Header ───────────────────────────────────────────────────────────────
     st.markdown(
         f"""
         <div class="pbi-header">
@@ -861,6 +925,7 @@ with tabs[5]:
     PBI_COLOR    = "#F2C811"
     PBI_PALETTE  = ["#F2C811", "#00B0F0", "#00CC6A", "#FF4444", "#A259FF", "#FF8C00"]
 
+    # ── Sidebar Filters ───────────────────────────────────────────────────────
     st.markdown('<div class="pbi-section-title">🔍 Filters</div>', unsafe_allow_html=True)
     pbi_df = active_df.copy()
 
@@ -896,6 +961,7 @@ with tabs[5]:
 
     st.markdown("---")
 
+    # ── KPI Row ───────────────────────────────────────────────────────────────
     st.markdown('<div class="pbi-section-title">📌 Key Performance Indicators</div>', unsafe_allow_html=True)
 
     kpi_cols = st.columns(5)
@@ -920,6 +986,7 @@ with tabs[5]:
         unique_c = pbi_df[city_col].nunique()
         kpi_data.append(("📍 Cities / Regions", f"{unique_c:,}", "in current filter"))
 
+    # fill up to 5 KPIs with extra numeric stats
     for col in num_cols:
         if col in [price_col, rating_col]:
             continue
@@ -933,6 +1000,7 @@ with tabs[5]:
 
     st.markdown("---")
 
+    # ── Row 1: Bar + Line ─────────────────────────────────────────────────────
     st.markdown('<div class="pbi-section-title">📊 Performance by Category & Time Trend</div>', unsafe_allow_html=True)
     row1_c1, row1_c2 = st.columns(2)
 
@@ -1039,8 +1107,16 @@ with tabs[5]:
             st.info("Need at least 2 numeric columns for scatter.")
 
     with row2_c2:
-        donut_col = city_col if city_col and city_col in pbi_df.columns else (cat_cols[0] if cat_cols else None)
-        if donut_col:
+        all_donut_options = cat_cols + [c for c in num_cols if c not in cat_cols]
+        default_donut = city_col if city_col and city_col in pbi_df.columns else (cat_cols[0] if cat_cols else None)
+        default_idx = all_donut_options.index(default_donut) if default_donut and default_donut in all_donut_options else 0
+        if all_donut_options:
+            donut_col = st.selectbox(
+                "Distribution by",
+                options=all_donut_options,
+                index=default_idx,
+                key="pbi_donut_col",
+            )
             value_counts = pbi_df[donut_col].value_counts().head(10).reset_index()
             value_counts.columns = [donut_col, "count"]
             fig_pbi_donut = px.pie(
@@ -1148,6 +1224,7 @@ with tabs[5]:
         else:
             st.info("Need categorical + numeric column for top 10 table.")
 
+   
     st.markdown("---")
     st.markdown('<div class="pbi-section-title">🤖 AI-Generated Insights</div>', unsafe_allow_html=True)
 
