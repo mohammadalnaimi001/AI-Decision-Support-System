@@ -17,7 +17,7 @@ try:
 except ImportError:
     genai = None
 
-GEMINI_API_KEY = "AQ.Ab8RN6KAVRoZH5vAN7W500F5OLBghMOn29RYdpDhXaagMWW2gg"
+GEMINI_API_KEY = "AQ.Ab8RN6Kg7y7_-XTE9QGaQkk8cTKTCEalkbD7w3HCAOy7LeXkJg"
 GEMINI_MODEL   = "gemini-2.5-flash"
 
 st.set_page_config(
