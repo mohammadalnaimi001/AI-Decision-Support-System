@@ -21,7 +21,7 @@ GEMINI_API_KEY = "AQ.Ab8RN6KAVRoZH5vAN7W500F5OLBghMOn29RYdpDhXaagMWW2gg"
 GEMINI_MODEL   = "gemini-2.5-flash"
 
 st.set_page_config(
-    page_title="AI Intelligence Dataset",
+    page_title="AI Hotel Intelligence Dataset",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -404,7 +404,7 @@ if genai is not None:
     except Exception as _cfg_err:
         st.error(f"Gemini config error: {_cfg_err}")
 
-st.title("📊 AI Intelligence Dataset")
+st.title("📊 AI Hotel Intelligence Dataset")
 st.caption("Upload, clean, compare, visualize, and generate AI insights from multiple datasets.")
 
 with st.sidebar:
@@ -1272,7 +1272,7 @@ Dataset:
     st.markdown(
         f"""
         <div class="pbi-footer">
-            📊 AI Intelligence Dataset &nbsp;|&nbsp; Power BI Template &nbsp;|&nbsp;
+            📊 AI Hotel Intelligence Dataset &nbsp;|&nbsp; Power BI Template &nbsp;|&nbsp;
             Dataset: <strong>{active_name}</strong> &nbsp;|&nbsp;
             {len(pbi_df):,} records displayed &nbsp;|&nbsp;
             Built with Streamlit + Plotly
